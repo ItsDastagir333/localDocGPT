@@ -22,13 +22,12 @@ public class EmbeddingEntity {
     private String contentSnippet;
 
     @Lob
-    private String embeddingVector; // Store as CSV numbers for simplicity
+    private String embeddingVector; //CSV of Embedding
 
     public EmbeddingEntity() {
     }
 
-    public EmbeddingEntity(Long id, String fileName, String contentSnippet, String embeddingVector) {
-        this.id = id;
+    public EmbeddingEntity( String fileName, String contentSnippet, String embeddingVector) {
         this.fileName = fileName;
         this.contentSnippet = contentSnippet;
         this.embeddingVector = embeddingVector;
@@ -36,10 +35,6 @@ public class EmbeddingEntity {
 
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getFileName() {

@@ -3,9 +3,7 @@ package com.localDocGPT.service;
 import com.localDocGPT.model.EmbeddingEntity;
 import com.localDocGPT.repository.EmbeddingRepository;
 import com.localDocGPT.utils.SimilarityUtil;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import com.localDocGPT.service.LLMProviderService;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -16,21 +14,23 @@ import java.util.stream.Collectors;
 public class EmbeddingServiceImpl implements EmbeddingService {
 
     private final EmbeddingRepository repository;
-    private final EmbeddingModel embeddingModel;
-    private final ChatLanguageModel chatModel;
+    private final LLMProviderService llmProvider;
 
     public EmbeddingServiceImpl(EmbeddingRepository repository,
-                                EmbeddingModel embeddingModel,
-                                ChatLanguageModel chatModel) {
+                                LLMProviderService llmProvider) {
         this.repository = repository;
-        this.embeddingModel = embeddingModel;
-        this.chatModel = chatModel;
+        this.llmProvider = llmProvider;
     }
 
     @Override
     public String ask(String question) {
-        Embedding questionEmbedding = embeddingModel.embed(question).content();
-        List<Float> questionVector = questionEmbedding.vectorAsList();
+        List<Float> questionVector;
+        try {
+            questionVector = llmProvider.embed(question);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error occurred while creating embedding: " + e.getMessage();
+        }
 
         List<EmbeddingEntity> allDocs = repository.findAll();
 
@@ -64,7 +64,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 """.formatted(context, question);
 
         try {
-            return chatModel.generate(prompt);
+            return llmProvider.generate(prompt);
         } catch (Exception e) {
             e.printStackTrace();
             return "Error occurred while generating the answer: " + e.getMessage();

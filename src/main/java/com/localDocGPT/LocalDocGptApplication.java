@@ -7,17 +7,17 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import com.localDocGPT.service.DocumentService;
+import com.localDocGPT.service.FileIndexerService;
 import com.localDocGPT.config.AppConfig;
 
 @SpringBootApplication
 public class LocalDocGptApplication implements CommandLineRunner {
 	
-    private final DocumentService documentService;
+    private final FileIndexerService fileIndexerService;
     private final AppConfig appConfig;
 
-    public LocalDocGptApplication(DocumentService documentService, AppConfig appConfig) {
-        this.documentService = documentService;
+    public LocalDocGptApplication(FileIndexerService fileIndexerService, AppConfig appConfig) {
+        this.fileIndexerService = fileIndexerService;
         this.appConfig = appConfig;
     }
 
@@ -53,24 +53,11 @@ public class LocalDocGptApplication implements CommandLineRunner {
         }
 
         System.out.println("📂 Processing documents from: " + documentsPath);
-        File[] files = directory.listFiles((dir, name) -> 
-            name.toLowerCase().endsWith(".txt") || 
-            name.toLowerCase().endsWith(".md")
-        );
-
-        if (files == null || files.length == 0) {
-            System.out.println("❌ No text or markdown files found in the directory");
-            return;
+        try {
+            fileIndexerService.indexFolder(documentsPath);
+            System.out.println("✅ Document indexing completed!");
+        } catch (Exception e) {
+            System.err.println("❌ Error indexing folder: " + e.getMessage());
         }
-
-        for (File doc : files) {
-            try {
-                documentService.processDocuments(doc);
-            } catch (Exception e) {
-                System.err.println("❌ Error processing " + doc.getName() + ": " + e.getMessage());
-            }
-        }
-        
-        System.out.println("✅ Document processing completed!");
     }
 }

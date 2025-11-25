@@ -3,7 +3,7 @@ package com.localDocGPT.service;
 import com.localDocGPT.model.EmbeddingEntity;
 import com.localDocGPT.repository.EmbeddingRepository;
 import com.localDocGPT.utils.FileReaderUtil;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import com.localDocGPT.service.LLMProviderService;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -13,12 +13,12 @@ import java.io.IOException;
 public class FileIndexerServiceImpl implements FileIndexerService {
 
     private final EmbeddingRepository repository;
-    private final EmbeddingModel embeddingModel;
+    private final LLMProviderService llmProvider;
     private final org.springframework.core.env.Environment environment;
 
-    public FileIndexerServiceImpl(EmbeddingRepository repository, EmbeddingModel embeddingModel, org.springframework.core.env.Environment environment) {
+    public FileIndexerServiceImpl(EmbeddingRepository repository, LLMProviderService llmProvider, org.springframework.core.env.Environment environment) {
         this.repository = repository;
-        this.embeddingModel = embeddingModel;
+        this.llmProvider = llmProvider;
         this.environment = environment;
     }
 
@@ -40,7 +40,7 @@ public class FileIndexerServiceImpl implements FileIndexerService {
             String content = FileReaderUtil.readFile(file);
 
             // Simple chunking for large files
-            int chunkSize = 1000; // characters per chunk
+            int chunkSize = 3000; // characters per chunk
             for (int start = 0; start < content.length(); start += chunkSize) {
                 int end = Math.min(start + chunkSize, content.length());
                 String chunk = content.substring(start, end);
@@ -56,8 +56,8 @@ public class FileIndexerServiceImpl implements FileIndexerService {
                             useDev = true;
                         }
                         // fallback to local embeddings when no OpenAI key is configured
-                        String propKey = environment.getProperty("openai.api.key");
-                        String envKey = System.getenv("OPENAI_API_KEY");
+                        String propKey = environment.getProperty("gemini.api.key");
+                        String envKey = System.getenv("GEMINI_API_KEY");
                         if ((propKey == null || propKey.isBlank()) && (envKey == null || envKey.isBlank())) {
                             useDev = true;
                         }
@@ -67,14 +67,14 @@ public class FileIndexerServiceImpl implements FileIndexerService {
                         java.util.List<Float> vec = com.localDocGPT.utils.LocalEmbeddingUtil.embed(chunk, 256);
                         embeddingStr = vec.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","));
                     } else {
-                        dev.langchain4j.data.embedding.Embedding embedding = embeddingModel.embed(chunk).content();
-                        if (embedding == null || embedding.vectorAsList() == null) {
-                            System.err.println("Warning: received empty embedding for chunk in file " + file.getName());
-                            continue;
-                        }
-                        embeddingStr = embedding.vectorAsList().stream()
-                                .map(Object::toString)
-                                .collect(java.util.stream.Collectors.joining(","));
+                            java.util.List<Float> vec = llmProvider.embed(chunk);
+                            if (vec == null || vec.isEmpty()) {
+                                System.err.println("Warning: received empty embedding for chunk in file " + file.getName());
+                                continue;
+                            }
+                            embeddingStr = vec.stream()
+                                    .map(Object::toString)
+                                    .collect(java.util.stream.Collectors.joining(","));
                     }
 
                     EmbeddingEntity entity = new EmbeddingEntity();
